@@ -1,0 +1,23 @@
+var http = require("http");
+var userModule = require("ihealth/user");
+
+try {
+
+  var user = new userModule.User({username:"sandboxuser@ihealthlabs.com"});
+  var data = {};
+  data.userGetInfo = user.getInfo();
+  //data.listSPO2Measures = user.listSPO2Measures();
+  //data.listBloodPressureMeasures = user.listBloodPressureMeasures({from:new Date("2016-04-01").getTime()});
+  //data.listActivities = user.listActivities();
+  //data.getActivityAtDate = user.getActivityAtDate({date:new Date("2016-04-05").getTime()});
+  data.listWeightMeasures = user.listWeightMeasures({from:new Date("2016-04-05").getTime(), to:new Date().getTime()});
+  data.listFatFreeMassMeasures = user.listFatFreeMassMeasures();
+  data.listFatRatioMeasures = user.listFatRatioMeasures();
+  data.listFatMassMeasures = user.listFatMassMeasures();
+  //data.listDiastolicBloodPressureMeasures = user.listDiastolicBloodPressureMeasures();
+  //data.listWorkoutMeasures = user.listWorkoutMeasures();
+  //data.listSleepMeasures = user.listSleepMeasures();
+  return data;
+}catch(exception) {
+  return exception;
+}			

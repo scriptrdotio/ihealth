@@ -1,0 +1,29 @@
+var config = require("ihealth/oauth2/config");
+var util = require("ihealth/util");
+
+function getUrl(username) {
+  
+  if (!username) {
+
+    return {
+
+      "status": "failure",
+      "errorCode": "Missing_Parameter",
+      "errorDetail": "You need to send the mandatory 'username' parameter with a value"
+    };
+  }
+
+  var urlConfig = config.getAuthUrl();
+  var state =  urlConfig.state;
+  var redirectUrl = config.redirect_uri ? config.redirect_uri : "";
+  redirectUrl += (config.addStateToRedirectUrl ? "&state=" + state : "");
+  var queryStr = "client_id=" + config.client_id + "&response_type=" + config.response_type;
+  queryStr += config.scope ? "&APIName=" + encodeURIComponent(config.scope) : "";
+  queryStr += "&state=" + state;
+  queryStr += config.access_type? "&access_type=" + config.access_type : "";
+  queryStr += "&redirect_uri=" + encodeURIComponent(redirectUrl);
+
+  // associate the state to the provided username in order to further map the access token to that user
+  storage.global[config.app + "_state_" + state] = util.toStorableUserName(username);
+  return urlConfig.url + "?" + queryStr;   
+}			

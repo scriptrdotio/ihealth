@@ -1,0 +1,596 @@
+ var config = require("ihealth/oauth2/config");
+var mappings = require("ihealth/mappings");
+var client = require("ihealth/httpclient");
+var util = require("ihealth/util");
+var tokenManager = require("ihealth/oauth2/TokenManager");
+//var notifications = require("withings/notifications");
+
+/**
+ * This class provides methods that wrap the APIs exposed by Withings.
+ * It allows invoking these APIs for a specific user.
+ * The constructor can throw exceptions.
+ * @class User
+ * @constructor User
+ * @param {Object} dto {
+ * 	{String} username:  the username of a given ihealth enf user
+ * }
+ */
+function User(dto) {
+  
+  if (!dto || !dto.username) {
+    
+    throw {
+      "errorCode": "Invalid_Parameter",
+      "errorDetail": "User - dto and dto.username cannot be null or empty"
+    };
+  }
+  
+  this.username = dto.username;
+  this._username = util.toStorableUserName(dto.username);
+  this.id = tokenManager.getUserId(this._username);
+  this.client = new client.HttpClient({username: this._username});
+}
+
+/**
+ * Return information about the current user (weight, height, etc.)
+ * @method getInfo
+ * @return {Object} {
+ *	{String} HeightUnit: "cm", "1 -->"feet,
+ *	{Numeric} WeightUnit: if 0 --> kg, 1 --> lbs, 2 --> stone,
+ *	{Numeric} dateofbirth: a timestamp
+ *	{String} gender: 'Male' or 'Female',
+ *	{Numeric} height : user's height (float)
+ *	{String} logo: URL to a picture of the user,
+ *	{String} nickname,
+ *	{String} userid,
+ *	{Numeric} weight: user's weight (float)
+ * }
+ */
+User.prototype.getInfo = function() {  
+  var result = this._invokeApi();
+  if (result["dateofbirth"]) {
+    result["dateofbirth"] = new Date(result["dateofbirth"] * 1000).toISOString();
+  }
+  
+  return result;
+};
+
+/**
+ * This method can throw exceptions
+ * @method getActivityAtDate
+ * @param {String} date: get the activities at this date. YYYY-mm-dd
+ * @return {Object} an activity object (can be empty)
+ */
+User.prototype.getActivityAtDate = function(date) {  
+  
+  if (!date) {
+    
+     throw {
+      "errorCode": "Invalid_Parameter",
+      "errorDetail": "User.getActivityAtDate - date cannot be null or empty."
+    };
+  }
+
+  var activity = this.listActivities({"from":date, "to":date});
+  return activity ? activity : {};
+};
+
+/**
+ * This method can throw exceptions
+ * @method listActivities
+ * @param {Object} [params]
+ * @param {String} [params.from]: (optional) get the activities starting since that date (ISO)/timestamp.
+ * @param {Date} [params.to]: (optional) get the activities starting up to that date.
+ * @param {Numeric} [params.offset]: (optional) the number of most recent measure groups (pages) to skip. 
+ * @return {Array} array of activity objects 
+ */
+User.prototype.listActivities = function(params) {  
+  
+  var newParams = JSON.parse(JSON.stringify(params ? params : {}));
+  newParams.path = "/activity";
+  var result = this.listBodyMeasures(newParams);
+  result.data = result.ARDataList;
+  delete result.ARDataList;
+  return result;
+};
+
+/**
+ * Compute the average of different activity measures for a given period of time.
+ * This method can throw exceptions
+ * @method getAverageActivityMeasures
+ * @param {String} from: (optional) get the activities starting since that date. YYYY-mm-dd
+ * @param {String} to: (optional) get the activities starting up to that date. YYYY-mm-dd
+ * @return {Object} average measures
+ * {
+ *  avgCalories: average calories consumption for the specified period
+ *  avgDistance: average distance walked for the specified period, in meters
+ *  avgElevation: avergae elevation for the specified period, in meters
+ *  avgSoftActivityDuration: average duration of soft activities for the specified period, in seconds
+ *  avgModerateActivityDuration: average duration of moderate activities for the specified period, in seconds
+ *  avgIntenseActivityDuration: average duration of intense activities for the specified period, in seconds
+ * }
+ */
+User.prototype.getAverageActivityMeasures = function(params) {
+  
+};
+
+/** 
+ * This method can throw exceptions
+ * Only returns user's weight measures
+ * @see listBodyMeasures for parameters and returned values
+ * @method listWeightMeasures
+ */
+User.prototype.listWeightMeasures = function(params) {  
+  
+  var newParams = JSON.parse(JSON.stringify(params ? params : {}));
+  newParams.path = "/weight";
+  var result = this.listBodyMeasures(newParams);
+  result.data = result.WEIGHTDATALIST;
+  delete result.WEIGHTDATALIST;
+  return result;
+};
+
+/** 
+ * This method can throw exceptions
+ * Only returns fat free mass measures
+ * @see listBodyMeasures for parameters and returned values
+ * @method listFatFreeMassMeasures
+ */
+User.prototype.listFatFreeMassMeasures = function(params) {  
+  
+  var results = this.listWeightMeasures(params);
+  for (var i  = 0; i < results.WeightDataList.length; i++) {
+    
+    var measure = results.WeightDataList[i];
+    measure.FatFreeValue = measure.WeightValue - (measure.WeightValue * measure.FatValue * 0.01).toFixed(2);
+    delete measure.BoneValue;
+    delete measure.WaterValue;
+    delete measure.MuscaleValue;
+    delete measure.FatValue;
+    delete measure.WeightValue;
+  }
+  
+  results.data = results.WeightDataList;
+  delete results.WeightDataList;
+  return results;
+};
+
+/** 
+ * This method can throw exceptions
+ * Only returns fat ratio measures
+ * @see listBodyMeasures for parameters and returned values
+ * @method listFatRatioMeasures
+ */
+User.prototype.listFatRatioMeasures = function(params) {  
+  
+  var results = this.listWeightMeasures(params);
+  for (var i  = 0; i < results.WeightDataList.length; i++) {
+    
+    var measure = results.WeightDataList[i];
+    measure.FatRatio =  measure.FatValue;
+    delete measure.BoneValue;
+    delete measure.WaterValue;
+    delete measure.MuscaleValue;
+    delete measure.FatValue;
+    delete measure.WeightValue;
+  }
+  
+  results.data = results.WeightDataList;
+  delete results.WeightDataList;
+  return results;
+};
+
+/** 
+ * This method can throw exceptions
+ * Only returns fat mass  measures
+ * @see listBodyMeasures for parameters and returned values
+ * @method listFatMassMeasures
+ */
+User.prototype.listFatMassMeasures = function(params) {  
+  
+  var results = this.listWeightMeasures(params);
+  for (var i  = 0; i < results.WeightDataList.length; i++) {
+    
+    var measure = results.WeightDataList[i];
+    measure.FatMassValue = (measure.WeightValue * measure.FatValue * 0.01).toFixed(2);
+    delete measure.BoneValue;
+    delete measure.WaterValue;
+    delete measure.MuscaleValue;
+    delete measure.WeightValue;
+    delete measure.FatValue;
+  }
+  
+  return results;
+};
+
+/** 
+ * This method can throw exceptions
+ * Only returns diastolic blood pressure measures
+ * @see listBodyMeasures for parameters and returned values
+ * @method listDiastolicBloodPressureMeasures
+ */
+User.prototype.listDiastolicBloodPressureMeasures = function(params) {  
+  
+  var results = this.listBloodPressureMeasures(params);
+  for (var i = 0; i < results.data.length; i++) {
+  	
+    delete results.data[i].Systolic;  
+    delete results.data[i]["Heart rate"];
+    delete results.data[i].Arrhythmia;
+  }
+  
+  return results;
+};  
+
+/** 
+ * This method can throw exceptions
+ * Only returns systolic blood pressure measures
+ * @see listBodyMeasures for parameters and returned values
+ * @method listSystolicBloodPressureMeasures
+ */
+User.prototype.listSystolicBloodPressureMeasures = function(params) {  
+  
+  var results = this.listBloodPressureMeasures(params);
+  for (var i = 0; i < results.data.length; i++) {
+  	
+    delete results.data[i].Diastolic;  
+    delete results.data[i]["Heart rate"]; 
+    delete results.data[i].Arrhythmia;
+  }
+  
+  return results;
+};
+
+/** 
+ * This method can throw exceptions
+ * Only returns heart pulse measures
+ * @see listBodyMeasures for parameters and returned values
+ * @method listHeartPulseMeasures
+ */
+User.prototype.listHeartPulseMeasures = function(params) {  
+  
+  var results = this.listBloodPressureMeasures(params);
+  for (var i = 0; i < results.data.length; i++) {
+  	
+    delete results.data[i].Diastolic;  
+    delete results.data[i].Sistolic; 
+  }
+  
+  return results;
+};
+
+/** 
+ * This method can throw exceptions
+ * @method listBloodPressureMeasures
+ * @param {Object} [params]
+ * @param {String} [params.from]: (optional) get the activities starting since that date (ISO)/timestamp.
+ * @param {Date} [params.to]: (optional) get the activities starting up to that date.
+ * @param {Numeric} [params.offset]: (optional) the number of most recent measure groups (pages) to skip. 
+ */
+User.prototype.listBloodPressureMeasures = function(params) {  
+  
+  var newParams = JSON.parse(JSON.stringify(params ? params : {}));
+  newParams.path = "/bp";
+  var result = this.listBodyMeasures(newParams);
+  result.data = result.BPDataList;  
+  delete result.BPDataList;
+  return result;
+};
+
+/** 
+ * This method can throw exceptions
+ * Only returns oxymetry measures
+ * @method listSPO2Measures
+ * @param {Object} [params]
+ * @param {String} [params.from]: (optional) get the activities starting since that date (ISO)/timestamp.
+ * @param {Date} [params.to]: (optional) get the activities starting up to that date.
+ * @param {Numeric} [params.offset]: (optional) the number of most recent measure groups (pages) to skip. 
+ */
+User.prototype.listSPO2Measures = function(params) {  
+  
+  var newParams = JSON.parse(JSON.stringify(params ? params : {}));
+  newParams.path = "/spo2";
+  var result = this.listBodyMeasures(newParams);
+  result.data = result.BODataList;
+  delete result.BODataList;
+  return result;
+};
+
+/**
+ * This method can throw exceptions
+ * Only returns workout measures
+ * @see listBodyMeasures for parameters and returned values
+ * @method listWorkoutMeasures
+ */
+User.prototype.listWorkoutMeasures = function(params) {
+  
+  var newParams = JSON.parse(JSON.stringify(params ? params : {}));
+  newParams.path = "/sport";
+  var result = this.listBodyMeasures(newParams);
+  result.data = result.SPORTDataList;
+  delete result.SPORTDataList;
+  return result;
+};
+
+/**
+ * This method can throw exceptions
+ * @method listSleepMeasures
+ * @param {Date} from: (optional) start retrieving sleep measures from that date and after
+ * @param {Date} to: (optional) retrieve sleep measures before that date
+ * @return {Array} array of sleep measures objects
+ */
+User.prototype.listSleepMeasures = function(params) {
+  
+  var newParams = JSON.parse(JSON.stringify(params ? params : {}));
+  newParams.path = "/sleep";
+  var result = this.listBodyMeasures(newParams);
+  result.data = result.SRDataList;
+  delete result.SRDataList;
+  return result;
+};
+
+
+ /**
+  * This method can throw exceptions
+  * @method listBodyMeasures
+  * @param {Object} [params]
+  * @param {String} [params.from]: (optional) get the activities starting since that date (ISO)/timestamp.
+  * @param {Date} [params.to]: (optional) get the activities starting up to that date.
+  * @param {Numeric} [params.offset]: (optional) the number of most recent measure groups (pages) to skip. 
+  */ 
+User.prototype.listBodyMeasures = function(params) { 
+
+  var newParams = JSON.parse(JSON.stringify(params ? params : {}));   
+  if (newParams.from) {    
+    
+    if (typeof newParams.from == "string") {
+      newParams.from = new Date(newParams.from).getTime();
+    } 
+    
+    newParams.from = Math.round(newParams.from / 1000);
+    newParams.start_time = newParams.from;
+    delete newParams.from;
+  }
+  
+  if (newParams.to) {    
+    
+    if (typeof newParams.to == "string") {
+      newParams.to = new Date(newParams.to).getTime();
+    } 
+   
+    newParams.to = Math.round(newParams.to / 1000);
+    newParams.end_time = newParams.to;
+    delete newParams.to;
+  }
+  
+  if (newParams.offset) {
+    
+    newParams.index = newParams.offset;
+    delete newParams.offset;
+  }
+ 
+  var results = this._invokeApi(newParams);
+  delete results.NextPageUrl;
+  delete results.PrevPageUrl;
+  delete results.CurrentRecordCount;
+  results.offset = results.PageNumber;
+  delete results.PageNumber;
+  results.recordCount = results.RecordCount;
+  results.maxRecords = results.PageLength;
+  delete results.PageLength;
+  delete results.RecordCount;
+  return results;
+};
+
+/**
+ * This method can throw exceptions
+ * @method listSleepSummaryMeasures
+ * @param {Date} from: start retrieving sleep measures from that date
+ * @param {Date} to: retrieve sleep measures before that date
+ * @return {Array} array of sleep measures series objects
+ *	{
+ *		{Date} startdate: The starting datetime for the sleep state data
+ *		{Date} enddate: The end datetime for the sleep data
+ *		{Date} date: the date of the measurement
+ *		{String} id: identifier of the measurement
+ *      {String} timezone: time zone of the current user at the time of measure
+ *      {Numeric} model:  withings code for the withings monitoring device,
+ *      {String} modelDescription
+ *      {Array} data: array of measure objects
+ *      { 
+ *        {Numeric} wakeupduration: total time during which the end user was awake during the sleep period, in seconds 
+ *        {Numeric} lightsleepduration: total time during which the end user had a light sleep during the sleep period, in seconds
+ *        {Numeric} deepsleepduration: total time during which the end user had a deep sleep during the sleep period, in seconds
+ *        {Numeric} remsleepduration:total time during which the end user had a deep sleep during the sleep period, in seconds
+ *        {Numeric} durationtosleep: time needed by the end user to fall asleep
+ *        {Numeric} durationtowakeup: time needed by the end user to wake up,
+ *        {Numeric} wakeupcount: number of times the end user woke up during the sleep period
+ *       },
+ *      {Numeric} modified: time in seconds when the monitoring device was synchronized
+ *     }
+ *	}
+ */
+User.prototype.listSleepSummaryMeasures = function(params) {
+  
+  var newParams = JSON.parse(JSON.stringify(params ? params : {}));
+  newParams["action"] = "getsummary"; 
+  return this._sleepMeasures(newParams);
+};
+
+/**
+ * compute the average of sleep summary data for a given period of time
+ * @method getAverageSleepSummaryMeasures
+ * @param {Date} from: start retrieving sleep measures from that date
+ * @param {Date} to: retrieve sleep measures before that date
+ * @return {Object} {
+ *   avgWakeupDuration: average duration of wake up time within a sleep period, in seconds
+ *   avgLightsleepduration: average duration of light sleep time within a sleep period, in seconds
+ *   avgDeepsleepduration: average duration of deep sleep time within a sleep period, in seconds
+ *   avgRemsleepduration: average duration of rem sleep time within a sleep period, in seconds
+ *   avgDurationtosleep: average time needed to fall asleep, in seconds
+ *   avgDurationtowakeup: average time needed to wake up, in seconds
+ *   avgWakeupcount: average number of time the user woke up during a sleep period
+ * }
+ */
+User.prototype.getAverageSleepSummaryMeasures = function(params) {
+  
+  var newParams = JSON.parse(JSON.stringify(params ? params : {}));
+  var results = [];
+  var res = this.listSleepSummaryMeasures(newParams);
+  var totalWakeupDuration = 0;
+  var totalLightsleepduration = 0;
+  var totalDeepsleepduration = 0;
+  var totalRemsleepduration = 0;
+  var totalDurationtosleep = 0;
+  var totalDurationtowakeup = 0;
+  var totalWakeupcount = 0;
+  for (var i = 0; res && i < res.series.length; i++) {
+    
+    totalWakeupDuration +=  res.series[i].data.wakeupduration;
+    totalLightsleepduration += res.series[i].data.lightsleepduration;
+    totalDeepsleepduration += res.series[i].data.deepsleepduration;
+    totalRemsleepduration += res.series[i].data.remsleepduration;
+    totalDurationtosleep += res.series[i].data.durationtosleep;
+    totalDurationtowakeup += res.series[i].data.durationtowakeup;
+    totalWakeupcount += res.series[i].data.wakeupcount;
+  }
+  
+  if (res) {
+    
+    return {
+    
+      avgWakeupDuration: Math.round(totalWakeupDuration / res.series.length),
+      avgLightsleepduration: Math.round(totalLightsleepduration / res.series.length),
+      avgDeepsleepduration: Math.round(totalDeepsleepduration / res.series.length),
+      avgRemsleepduration: Math.round(totalRemsleepduration / res.series.length),
+      avgDurationtosleep: Math.round(totalDurationtosleep / res.series.length),
+      avgDurationtowakeup: Math.round(totalDurationtowakeup / res.series.length),
+      avgWakeupcount: Math.round(totalWakeupcount / res.series.length)
+  	};
+  }else {
+    return {};
+  }
+  
+};
+
+User.prototype._sleepMeasures = function(params) {
+  
+  if (!params || !params["from"] || !params["to"]) {
+    
+    throw {
+      "errorCode": "Invalid_Parameter",
+      "errorDetail": "You need to provide specify the 'from' and 'to' parameters"
+    }
+  }
+  
+  params.from = new Date(params.from);
+  params["startdate"]= Math.round(params.from.getTime() / 1000);
+  delete params["from"];
+  
+  params.to = new Date(params.to);
+  params["enddate"] = Math.round(params.to.getTime() / 1000);   
+  delete params["to"];
+  
+  var results = this._invokeApi("v2/sleep", params);
+  if (results.series) {
+    
+    for (var i = 0; i < results.series.length; i++) {
+      
+      results.series[i].startdate = new Date(results.series[i].startdate * 1000);
+      results.series[i].enddate = new Date(resuts.series[i].enddate * 1000);
+      if (results.series[i].state) {
+      	results.series[i].stateDescription = mappings.sleepStates[results.series[i].state];
+      }
+      
+      if (results.series[i].model) {
+        results.series[i].modelDescription = mappings.sleepTracker[results.series[i].model];
+      }
+    }
+  }
+  
+  if (results.model) {
+    results.modelDescription = mappings.sleepTracker[results.model];
+  }
+  
+  return  results.sleepMeasures;
+};
+
+/**
+ * Obtain an instance of the notifications.NotificationManager class in order to subscribe to notifications
+ * sent by Withings, or manage existing subscriptions for the current user.
+ * @return {Object} instance of NotificationManager
+ */
+User.prototype.getNotificationManager = function() {
+  
+  var notificationManager = new notifications.NotificationManager({userid: this.id});
+  return notificationManager;
+};
+
+User.prototype._invokeApi = function(reqParams) {
+
+  reqParams = reqParams ? reqParams : {};
+  var path = reqParams.path ? reqParams.path : "/user";
+  var serialNumbers = config.serialNumbers[path.substring(1, path.length)];
+  reqParams.sc = serialNumbers.sc;
+  reqParams.sv = serialNumbers.sv;
+  var url = "/user/" + this.id  + (reqParams.path ? reqParams.path : "") + ".json";
+  var method = reqParams.method ? reqParams.method : "GET";
+  var queryParams = {
+    
+    url: url,
+    method: method
+  };
+  
+  for (var p in reqParams) {
+    
+    if (["path", "method"].indexOf(p) == -1) {
+      
+      if (!queryParams.params) {
+       queryParams.params  = {};
+      }
+      
+      queryParams.params[p] =  reqParams[p];
+    }
+  }
+  
+  var results = this.client.callApi(queryParams);  
+  var dataListProperty = "";
+  for (var p in results) {
+    dataListProperty = p.toLowerCase().indexOf("list") > -1 ? p : "";
+    if (dataListProperty) break;
+  }
+  
+  var list = results[dataListProperty]; 
+  for (var i = 0; list && i < list.length; i++) {
+    
+    for (var property in list[i]) {
+  
+      if (mappings.values[property]) {
+        list[i][property] = mappings.values[property]["" + list[i][property]];
+      }
+
+      if (mappings.measures[property]) {
+        list[i][mappings.measures[property]] = list[i][property];
+        delete list[i][property];
+      }
+
+      if (property == "MDate") {
+        list[i]["Date"] = new Date(list[i][property] * 1000).toISOString();
+        delete list[i][property];
+      }
+
+      if (property == "LastChangeTime") {
+        list[i][property] = new Date(list[i][property] * 1000).toISOString();
+      }      
+    } 
+  } 
+  
+  for (var otherProp in results) {
+  
+    if (otherProp != dataListProperty && mappings.values[otherProp]) { 
+      results[otherProp] = mappings.values[otherProp]["" +  results[otherProp]];
+    }
+  }
+  
+  return results;
+};

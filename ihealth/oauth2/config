@@ -1,0 +1,116 @@
+ // The name of the app you need to connect to, e.g, 'Nest'
+var app = "iHealth";
+
+// The URL prefix to all the app's APIs
+var apiUrl = "https://api.ihealthlabs.com:8443/openapiv2"; // production
+//var apiUrl = "http://sandboxapi.ihealthlabs.com/openapiv2"; // sandbox
+
+// API version to use (can be empty)
+var apiVer = ""; 
+
+// OAuth 2.0: Authorization URI - step1 of OAuth process
+var authorizationUrl = "https://api.ihealthlabs.com:8443/OpenApiV2/OAuthv2/userauthorization/"; // production
+//var authorizationUrl = "http://sandboxapi.ihealthlabs.com/OpenApiV2/OAuthv2/userauthorization/"; // sandbox
+
+// OAuth 2.0: Authorization URI - step2 of OAuth process (if response_type is "code" usually)
+var accessTokenUrl = "https://api.ihealthlabs.com:8443/OpenApiV2/OAuthv2/userauthorization/"; // production
+//var accessTokenUrl = "http://sandboxapi.ihealthlabs.com/OpenApiV2/OAuthv2/userauthorization/"; // sandbox
+
+// OAuth 2.0 Client ID
+var client_id = "YOUR_PRODUCTION_CLIENT_ID"; //production
+//var client_id = "YOUR_SANDBOX_CLIENT_ID"; //sandbox;
+
+// OAuth 2.0 grant type, can be left empty
+var grantType = "authorization_code";
+
+// Client (consumer) secret
+var client_secret = "YOUR_PRODUCTION_SECRET"; // production
+//var client_secret = "YOUR_SANDBOX_SCRET"; // sandbox
+
+// Serial numbers of your iHealth application per API name (sc/sv, check your application's 
+// settings on iHealth: http://developer.ihealthlabs.com/developerdetailpage.htm)
+var serialNumbers = {
+  
+  activity:	{
+    sc: "",
+    sv: ""
+  },
+  glucose: {
+    sc: "",
+    sv: ""
+  },
+  bp: {
+    sc: "",
+	sv: ""
+  },
+  food:	{
+    sc: "",
+	sv: ""
+  },
+  sleep:{
+    sc: "",
+	sv: ""
+  },
+  spo2: {
+    sc: "",
+	sv: ""
+  },
+  sport: {
+    sc: "",
+    sv: ""
+  },
+  user: {
+    sc: "",
+    sv: ""
+  },
+  weight: {
+    sc: "",
+	sv: ""
+  }
+};
+
+// The OAuth 2.0 type of the returned credential (can be "code" or "token")
+var response_type = "code";
+
+// Possible values for "scope", i.e. authorizations requested from users. Can be empty
+var scope = "OpenApiActivity OpenApiBG OpenApiBP OpenApiFood	OpenApiSleep OpenApiSpO2 OpenApiSport OpenApiUserInfo OpenApiWeight"; // production
+//var scope = "OpenApiActivity OpenApiBG OpenApiBP OpenApiSleep OpenApiSpO2 OpenApiUserInfo OpenApiWeight"; // sandbox
+
+// Where the 3rd party app should send the user after the user grants or denies consent. 
+// Optional if you have only specified one callback URI for your application in the settings on
+var redirect_uri = "https://api.scriptr.io/ihealth/oauth2/getAccessToken?auth_token=RzM1RkYwQzc4Mg==";
+
+// Some OAuth API do not redirect the parameters you send to the authorization URL so you have
+// to add them to the redirectUrl. Notably we need to send the "state" in order to match the
+// access token to a user. Set the below to "true" if you need the "state" to be added to the 
+// query string of the callback URL
+var addStateToRedirectUrl = true;
+
+//optional. Check your target API for values (e.g. "offline)
+var access_type="";
+
+//the name of the field used by the OAuth API to return the access token
+var accessTokenFieldName = "AccessToken";
+
+//the name of the field used by the OAuth API to return the refresh token, if any
+var refreshTokenFieldName = "RefreshToken";
+
+//the name of the field used by the OAuth API to return the refresh token, if any
+var userIdFieldName = "UserID";
+
+// generate a random state to be used in the oauth 2 process' steps
+var state = (function() {
+  return ('xxxxxx'.replace(/[xy]/g, function(c) {
+      var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+      return v.toString(16);
+  }));
+})();
+
+function getAuthUrl() {
+  
+  return {
+
+    "url": authorizationUrl,
+    "state": state
+  }
+}			
