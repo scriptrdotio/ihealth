@@ -45,6 +45,7 @@ where he has to enter his credentials then authorize the application on the requ
 Once this is done, iHealth automatically calls back the ```modules/ihealth/oauth2/getAccessToken``` script, providing it with access and secret tokens. These ared stored in your scriptr.io's global storage.
 
 **Important note**
+
 Because iHealth's authentication workflow involves many steps, you might obtain an error at the end of the authentication process such as the below:
 ```
 {"response": {
@@ -67,7 +68,7 @@ Because iHealth's authentication workflow involves many steps, you might obtain 
 }
 }}
 ```
-If this was the case, kindly execute Step1 and Step2 once again.
+**If this was the case, kindly execute Step1 and Step2 once again.**
 
 ### Use the connector
 
