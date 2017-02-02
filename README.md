@@ -44,6 +44,31 @@ From the front-end, issue a request to the obtained URL. This redirects your end
 where he has to enter his credentials then authorize the application on the requested scope. 
 Once this is done, iHealth automatically calls back the ```modules/ihealth/oauth2/getAccessToken``` script, providing it with access and secret tokens. These ared stored in your scriptr.io's global storage.
 
+**Important note**
+Because iHealth's authentication workflow involves many steps, you might obtain an error at the end of the authentication process such as the below:
+```
+{"response": {
+  "metadata": {
+    "requestId": "54c24cf0-380c-477b-a876-8dcbfe5734bb",
+    "status": "success",
+    "scriptLog": [
+      {
+        "timestamp": "2017-02-02 08:26:01.982",
+        "level": "log",
+        "component": "ihealth/oauth2/getAccessToken",
+        "message": "state ://oau"
+      }
+    ],
+    "statusCode": "200"
+  },"result": {
+ "status": "failure",
+ "errorCode": "Inconsistency_Error",
+ "errorDetail": "Could not find username undefined in store to store the tokens"
+}
+}}
+```
+If this was the case, kindly execute Step1 and Step2 once again.
+
 ### Use the connector
 
 In order to use the connector, you need to import the main module: ```modules/ihealth/user```, as described below:
