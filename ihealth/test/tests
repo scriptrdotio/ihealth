@@ -1,5 +1,5 @@
 var http = require("http");
-var userModule = require("ihealth/user");
+var userModule = require("../user");
 
 try {
 
