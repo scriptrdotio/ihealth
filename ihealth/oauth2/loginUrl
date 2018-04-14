@@ -1,5 +1,5 @@
-var config = require("ihealth/oauth2/config");
-var util = require("ihealth/util");
+var config = require("./config");
+var util = require("./util");
 
 function getUrl(username) {
   
