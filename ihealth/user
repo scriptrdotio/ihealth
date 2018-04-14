@@ -1,9 +1,8 @@
- var config = require("ihealth/oauth2/config");
-var mappings = require("ihealth/mappings");
-var client = require("ihealth/httpclient");
-var util = require("ihealth/util");
-var tokenManager = require("ihealth/oauth2/TokenManager");
-//var notifications = require("withings/notifications");
+var config = require("./oauth2/config");
+var mappings = require("./mappings");
+var client = require("./httpclient");
+var util = require("./util");
+var tokenManager = require("./oauth2/TokenManager");
 
 /**
  * This class provides methods that wrap the APIs exposed by Withings.
