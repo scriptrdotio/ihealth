@@ -1,6 +1,6 @@
- var http = require("http");
-var config = require("ihealth/oauth2/config");
-var tokenMgr = require("ihealth/oauth2/TokenManager");
+var http = require("http");
+var config = require("./oauth2/config");
+var tokenMgr = require("./oauth2/TokenManager");
 
 /**
  * A generic http client that handles the communication with remote APIs
