@@ -1,4 +1,4 @@
- /**
+/**
  * this script is the first step of the oauth 2 process
  * it returns a url to invoke from a web client to open nest authentication window
  * where the end user has to enter his crendentials and authorize the scriptr; application
@@ -10,7 +10,7 @@
  * the one of the user's account
  */
 
-var loginUrl = require("ihealth/oauth2/loginUrl");
+var loginUrl = require("./loginUrl");
 
 var username = request.parameters.username;
 try {
