@@ -1,7 +1,7 @@
 var log = require("log"); log.setLevel("info");
 
-var tokenManager = require("ihealth/oauth2/TokenManager");
-var config = require("ihealth/oauth2/config");
+var tokenManager = require("./TokenManager");
+var config = require("./config");
 try {
   
   var params = _parseRequestOnIncorrectCallbackQueryString(request);
