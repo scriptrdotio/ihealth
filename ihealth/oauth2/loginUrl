@@ -1,5 +1,5 @@
 var config = require("./config");
-var util = require("./util");
+var util = require("../util");
 
 function getUrl(username) {
   
